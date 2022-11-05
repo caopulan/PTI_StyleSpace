@@ -8,5 +8,9 @@ image_rec_result_log_snapshot = 100
 pivotal_training_steps = 0
 model_snapshot_interval = 400
 
-## Run name to be updated during PTI
-run_name = ''
+
+#
+input_data_path = '/home/ssd1/Database/CelebA-HQ/test/'
+encoder_name = 'e4e'
+codes_paths = 'codes'
+run_name = f'{encoder_name}-face'
