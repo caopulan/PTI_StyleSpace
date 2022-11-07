@@ -11,6 +11,7 @@ model_snapshot_interval = 400
 
 #
 input_data_path = '/home/ssd1/Database/CelebA-HQ/test/'
+generator_path = '/home/ssd2/caopu/workspace/PTI/results'
 encoder_name = 'e4e'
 codes_paths = 'codes'
 run_name = f'{encoder_name}-face'

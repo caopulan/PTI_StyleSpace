@@ -39,7 +39,7 @@ def run_PTI(opts, run_name='', use_wandb=False, use_multi_id_training=False):
     else:
         coach = SingleIDCoach(dataloader, use_wandb)
 
-    coach.train()
+    coach.edit(opts.edit, opts.factor)
 
     return global_config.run_name
 
@@ -48,5 +48,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--encoder', type=str)
     parser.add_argument('--split', type=str)
+    parser.add_argument('--edit', type=str)
+    parser.add_argument('--factor', type=float)
     opts = parser.parse_args()
     run_PTI(opts, run_name='', use_wandb=False, use_multi_id_training=False)

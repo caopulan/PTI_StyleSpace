@@ -18,6 +18,15 @@ def load_tuned_G(run_id, type):
     return new_G
 
 
+def load_tuned_G_v2(path):
+    new_G_path = path
+    with open(new_G_path, 'rb') as f:
+        new_G = torch.load(f).to(global_config.device).eval()
+    new_G = new_G.float()
+    toogle_grad(new_G, False)
+    return new_G
+
+
 def load_old_G():
     with open(paths_config.stylegan2_ada_ffhq, 'rb') as f:
         old_G = pickle.load(f)['G_ema'].to(global_config.device).eval()
