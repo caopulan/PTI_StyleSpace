@@ -1,3 +1,5 @@
+import sys
+sys.path.append('/home/ssd2/caopu/workspace/PTI')
 import os
 import torch
 from tqdm import tqdm

@@ -1,5 +1,5 @@
 import sys
-sys.path.append('..')
+sys.path.append('/home/ssd2/caopu/workspace/PTI')
 from random import choice
 from string import ascii_uppercase
 from torch.utils.data import DataLoader

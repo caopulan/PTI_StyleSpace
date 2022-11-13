@@ -10,8 +10,9 @@ model_snapshot_interval = 400
 
 
 #
-input_data_path = '/home/ssd1/Database/CelebA-HQ/test/'
-generator_path = '/home/ssd2/caopu/workspace/PTI/results'
+# input_data_path = '/home/ssd1/Database/CelebA-HQ/test/'
+input_data_path = 'ood_images/'
+generator_path = '/home/ssd2/caopu/workspace/PTI/ood_results/'
 encoder_name = 'e4e'
 codes_paths = 'codes'
 run_name = f'{encoder_name}-face'
