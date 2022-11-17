@@ -105,15 +105,19 @@ class BaseCoach:
 
         return optimizer
 
-    def calc_loss(self, generated_images, real_images, log_name, new_G, use_ball_holder, w_batch):
+    def calc_loss(self, generated_images, real_images, log_name, new_G, use_ball_holder, w_batch, mask=None):
         loss = 0.0
 
-        if hyperparameters.pt_l2_lambda > 0:
-            l2_loss_val = l2_loss.l2_loss(generated_images, real_images)
+        if hyperparameters.pt_l2_lambda >= 0:
+            if mask is not None:
+                l2 = torch.nn.MSELoss(reduction='none')(generated_images, real_images)
+                l2_loss_val = (l2 * mask[None, None]).sum() / mask.sum()
+            else:
+                l2_loss_val = l2_loss.l2_loss(generated_images, real_images)
             if self.use_wandb:
                 wandb.log({f'MSE_loss_val_{log_name}': l2_loss_val.detach().cpu()}, step=global_config.training_step)
             loss += l2_loss_val * hyperparameters.pt_l2_lambda
-        if hyperparameters.pt_lpips_lambda > 0:
+        if hyperparameters.pt_lpips_lambda >= 0:
             loss_lpips = self.lpips_loss(generated_images, real_images)
             loss_lpips = torch.squeeze(loss_lpips)
             if self.use_wandb:
@@ -126,10 +130,31 @@ class BaseCoach:
 
         return loss, l2_loss_val, loss_lpips
 
-    def forward(self, w):
-        generated_images = self.G.synthesis(w, noise_mode='const', force_fp32=True)
-
-        return generated_images
+    def forward(self, w, mask=None, feature=None):
+        G, ws = self.G, w
+        if feature is None:
+            img = self.G.synthesis(w, noise_mode='const', force_fp32=True)
+        else:
+            block_ws = []
+            with torch.autograd.profiler.record_function('split_ws'):
+                # misc.assert_shape(ws, [None, G.synthesis.num_ws, G.synthesis.w_dim])
+                ws = ws.to(torch.float32)
+                w_idx = 0
+                for res in G.synthesis.block_resolutions:
+                    block = getattr(G.synthesis, f'b{res}')
+                    block_ws.append(ws.narrow(1, w_idx, block.num_conv + block.num_torgb))
+                    w_idx += block.num_conv
+            x = img = None
+            idx = 1
+            for res, cur_ws in zip(G.synthesis.block_resolutions, block_ws):
+                block = getattr(G.synthesis, f'b{res}')
+                x, img = block(x, img, cur_ws)
+                if idx == 8:
+                    mask = torch.nn.functional.interpolate(mask[None, None], (512, 512))
+                    x = mask * x + (1-mask) * feature
+                    # img = block.torgb(x, cur_ws[:, -1]).to(dtype=torch.float32, memory_format=torch.contiguous_format)
+                idx += 1
+        return img
 
     def initilize_e4e(self):
         ckpt = torch.load(paths_config.e4e, map_location='cpu')

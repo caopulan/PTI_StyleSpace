@@ -13,7 +13,7 @@ regulizer_alpha = 30
 
 ## Loss
 pt_l2_lambda = 1
-pt_lpips_lambda = 1
+pt_lpips_lambda = 0.
 
 ## Steps
 LPIPS_value_threshold = 0.06

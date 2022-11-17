@@ -2,6 +2,7 @@ import sys
 sys.path.append('/home/ssd2/caopu/workspace/PTI')
 import os
 import torch
+import numpy as np
 from tqdm import tqdm
 from configs import paths_config, hyperparameters, global_config
 from training.coaches.base_coach import BaseCoach
@@ -29,8 +30,12 @@ class SingleIDCoach(BaseCoach):
 
         for fname, image in tqdm(self.data_loader):
             image_name = fname[0]
+            mask = torch.Tensor(np.load(f'{image_name}.npy')).cuda()
 
             self.restart_training()
+            feature = torch.zeros([1, 64, 512, 512]).cuda()
+            feature.requires_grad = True
+            optimizer_feature = torch.optim.Adam([feature], lr=0.05)
 
             embedding_dir = f'{w_path_dir}/{paths_config.pti_results_keyword}/{image_name}'
             os.makedirs(embedding_dir, exist_ok=True)
@@ -45,25 +50,47 @@ class SingleIDCoach(BaseCoach):
 
             for i in tqdm(range(hyperparameters.max_pti_steps)):
 
-                generated_images = self.forward(w_pivot)
-                loss, l2_loss_val, loss_lpips = self.calc_loss(generated_images, real_images_batch, image_name,
-                                                               self.G, use_ball_holder, w_pivot)
+                img = self.forward(w_pivot)
+                loss, l2_loss_val, loss_lpips = self.calc_loss(img, real_images_batch, image_name,
+                                                               self.G, use_ball_holder, w_pivot, mask)
 
                 self.optimizer.zero_grad()
-
+                # optimizer_feature.zero_grad()
                 if loss_lpips <= hyperparameters.LPIPS_value_threshold:
                     break
 
                 loss.backward()
                 self.optimizer.step()
+                # optimizer_feature.step()
+
+                use_ball_holder = global_config.training_step % hyperparameters.locality_regularization_interval == 0
+
+                global_config.training_step += 1
+                log_images_counter += 1
+                if i % 20 == 0:
+                    img = tensor2im(img[0])
+                    img.save(f'{save_path}/images/PTI-{image_name}-step-{i}.jpg')
+
+            for i in tqdm(range(500)):
+
+                img = self.forward(w_pivot, mask, feature)
+
+                loss, l2_loss_val, loss_lpips = self.calc_loss(img, real_images_batch, image_name,
+                                                               self.G, use_ball_holder, w_pivot, mask=None)
+                optimizer_feature.zero_grad()
+                loss.backward()
+                optimizer_feature.step()
 
                 use_ball_holder = global_config.training_step % hyperparameters.locality_regularization_interval == 0
 
                 global_config.training_step += 1
                 log_images_counter += 1
 
+                if i % 10 == 0:
+                    img = tensor2im(img[0])
+                    img.save(f'{save_path}/images/{image_name}-step-{i}.jpg')
             self.image_counter += 1
-            img = tensor2im(generated_images[0])
+            img = tensor2im(img[0])
             img.save(f'{save_path}/images/{image_name}.jpg')
             torch.save(self.G, f'{save_path}/model/{image_name}.pt')
 
